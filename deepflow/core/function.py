@@ -1,53 +1,38 @@
 from abc import ABC, abstractmethod
-from typing import Any
 
-import numpy as np
+from numpy import ndarray
+
+from .variable import Variable
 
 
 class Function(ABC):
-    def __init__(self):
-        self.input = None
+    input: Variable
+    output: Variable
 
     @abstractmethod
-    def forward(self, *args, **kwargs) -> Any:
-        raise NotImplemented
+    def forward(self, x: ndarray) -> ndarray:
+        raise NotImplementedError
 
-    def __call__(self, *args, **kwargs) -> Any:
-        return self.forward(*args, **kwargs)
+    def backward(self, grad_input: ndarray) -> ndarray:
+        raise NotImplementedError
 
-    @abstractmethod
-    def backward(self, *args, **kwargs) -> Any:
-        raise NotImplemented
+    def __call__(self, inputs: Variable) -> Variable:
+        """
+        这是一个call函数，用于执行模型的前向传播过程并生成输出。
 
+        Args:
+            inputs(Variable): 输入的数据，包含输入的数据和相关的梯度信息。
 
-class Add(Function):
-    def forward(self, x1: np.ndarray, x2: np.ndarray) -> np.ndarray:
-        return x1 + x2
+        Returns:
+            outputs(Variable): 模型的输出，包含模型的预测结果和相关的梯度信息。
+        """
 
-    def backward(self, grad_add: np.ndarray) -> Any:
-        return grad_add, grad_add
-
-
-class Sub(Function):
-    def forward(self, x1: np.ndarray, x2: np.ndarray) -> np.ndarray:
-        return x1 - x2
-
-    def backward(self, grad_plus: np.ndarray) -> Any:
-        return grad_plus, grad_plus
-
-
-class Mul(Function):
-    def forward(self, x1: np.ndarray, x2: np.ndarray) -> np.ndarray:
-        return x1 * x2
-
-    def backward(self, grad_mul: np.ndarray) -> Any:
-        return grad_mul * self.input[0], grad_mul * self.input[1]
-
-
-class Div(Function):
-    def forward(self, x1: np.ndarray, x2: np.ndarray) -> np.ndarray:
-        return x1 / x2
-
-    def backward(self, grad_div: np.ndarray) -> Any:
-        return grad_div / (self.input[0] ** 2), \
-               grad_div / (self.input[1] ** 2)
+        x = inputs.data
+        y = self.forward(x)
+        outputs = Variable(y)
+        if inputs.requires_grad:
+            outputs.set_grad_fn(self)
+            outputs.set_requires_grad(True)
+        self.input = inputs
+        self.output = outputs
+        return outputs
